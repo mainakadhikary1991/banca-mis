@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="x-apple-disable-message-reformatting">
+<meta name="color-scheme" content="light">
+<title>Your Banca MIS sign-in code</title>
+</head>
+<body style="margin:0;padding:0;background:#EEF2F7;-webkit-text-size-adjust:100%;">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:#EEF2F7;font-size:1px;line-height:1px;">Your sign-in code is {{ .Token }}. It works for 10 minutes.&#8203;&#160;&#8203;&#160;&#8203;&#160;&#8203;&#160;&#8203;&#160;&#8203;&#160;&#8203;&#160;</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#EEF2F7;">
+  <tr><td align="center" style="padding:32px 12px;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:520px;">
+      <!-- header -->
+      <tr><td style="background:#0F1B33;background-image:linear-gradient(120deg,#0F1B33 0%,#1B3474 60%,#2A4FB8 100%);border-radius:16px 16px 0 0;padding:26px 30px 22px;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+          <td style="background:#1F5BD8;background-image:linear-gradient(135deg,#2D6BEA,#6250D6);border-radius:9px;width:38px;height:38px;text-align:center;vertical-align:middle;font-family:'Segoe UI',Arial,sans-serif;font-size:12px;font-weight:800;color:#FFFFFF;letter-spacing:.5px;">MIS</td>
+          <td style="padding-left:12px;font-family:'Segoe UI',Arial,sans-serif;font-size:18px;font-weight:700;color:#FFFFFF;">Banca MIS</td>
+        </tr></table>
+        <div style="font-family:'Segoe UI',Arial,sans-serif;font-size:13px;color:#C9D6F2;margin-top:14px;">Bancassurance performance dashboard</div>
+      </td></tr>
+      <!-- body -->
+      <tr><td style="background:#FFFFFF;padding:30px 30px 8px;border-left:1px solid #E1E6EE;border-right:1px solid #E1E6EE;">
+        <div style="font-family:'Segoe UI',Arial,sans-serif;font-size:22px;font-weight:700;color:#101828;margin:0 0 8px;">Your sign-in code</div>
+        <div style="font-family:'Segoe UI',Arial,sans-serif;font-size:15px;line-height:1.55;color:#475467;margin:0 0 22px;">Enter this code on the Banca MIS sign-in page to open your dashboard.</div>
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+          <tr><td align="center" style="background:#F4F7FD;border:1px solid #D7E2F8;border-radius:12px;padding:22px 12px;">
+            <div style="font-family:'Consolas','SF Mono','Menlo',monospace;font-size:38px;font-weight:700;letter-spacing:12px;color:#0F1B33;padding-left:12px;">{{ .Token }}</div>
+            <div style="font-family:'Segoe UI',Arial,sans-serif;font-size:12.5px;color:#7B8698;margin-top:10px;">Works for 10 minutes · can be used once</div>
+          </td></tr>
+        </table>
+        <div style="font-family:'Segoe UI',Arial,sans-serif;font-size:14px;line-height:1.55;color:#475467;margin:22px 0 0;">You asked to sign in as <b style="color:#101828;">{{ .Email }}</b>. You will see only the business tagged to you in the sales hierarchy.</div>
+      </td></tr>
+      <tr><td style="background:#FFFFFF;padding:18px 30px 28px;border-left:1px solid #E1E6EE;border-right:1px solid #E1E6EE;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+          <td style="background:#FFF7E6;border-left:4px solid #F59F00;border-radius:8px;padding:12px 14px;font-family:'Segoe UI',Arial,sans-serif;font-size:13px;line-height:1.5;color:#6B4A00;">
+            Did not ask for this? You can ignore this email. Nobody can sign in without the code, and nobody from the team will ever ask you for it.
+          </td>
+        </tr></table>
+      </td></tr>
+      <!-- footer -->
+      <tr><td style="background:#F7F9FC;border:1px solid #E1E6EE;border-top:0;border-radius:0 0 16px 16px;padding:16px 30px;font-family:'Segoe UI',Arial,sans-serif;font-size:12px;line-height:1.5;color:#7B8698;">
+        Banca MIS · Bancassurance Centre of Excellence<br>This is an automatic email. Replies are not read.
+      </td></tr>
+    </table>
+  </td></tr>
+</table>
+</body>
+</html>
