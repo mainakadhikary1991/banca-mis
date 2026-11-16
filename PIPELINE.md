@@ -1,82 +1,70 @@
-# Loading the daily data
+# Loading the data
 
-Everything happens in the browser when you click **Load data → Check and load**. Nothing changes until you press **Add to dashboard** in the pop-up.
+Everything happens in the browser when an admin clicks **Load data → Check and load**. Nothing changes until **Add to dashboard** is pressed in the pop-up.
 
 ## The file
 
-Use `templates/Banca-MIS-Data-Template.xlsx`. One row per policy. Sheets left with only the header row are skipped. CSV files with the same headers also work.
+Use `templates/Banca-MIS-Data-Upload.xlsx`. Its **Read me** sheet lists every sheet, how often to send it and which pages use it; **Read me - columns** explains every column with an example. One workbook can hold any of the sheets; send only the sheets that changed. Sheets left with only the header row are skipped. CSV files with the same header row also work (use CSV for a sheet over a million rows). Column names are matched loosely (`Policy No`, `policy_no` and `POLICY NUMBER` are all read), and the sheet is recognised from its header row, not its name.
 
-### Business – every day, one row per policy issued
+| Sheet | One row per | How often | Needed |
+|---|---|---|---|
+| Business | Policy, at issuance | Daily, month to date | Required |
+| Renewals Due | Expiring policy | Daily, expiring from 90 days ago to 60 days ahead | Required |
+| Servicing | Endorsement, refund or cancellation | Daily, month to date | Required |
+| Claims | Claim, with its latest status | Daily, reported or changed in the last 45 days | Required |
+| Earned Premium | Month × IMD × Sub IMD × LOB × product | Monthly, after close | Required |
+| Targets | Month × IMD (× Sub IMD × LOB × product) | Start of year, and when revised | Required |
+| Sales Hierarchy | IMD / Sub IMD code, with L1 … Ln name, email, designation, emp code | When it changes | Required |
+| Admins | Person | When it changes | Required |
+| People | Person (HR status) | Monthly | Optional |
+| Branch Master | Bank branch | Monthly | Optional |
+| Commission & Expense | Month × IMD (× LOB × product) | Monthly | Optional |
 
-| Column | Required | What to put |
-|---|---|---|
-| issue_date | Yes | Date the policy was issued |
-| policy_no | Yes | Policy number. Used to catch repeats and updates |
-| previous_policy_no | Optional | For a renewal, the policy it renews. Marks that policy as renewed in the due list |
-| channel, vertical_head, bank, nc, zh, tl, rm | Yes | The sales hierarchy, same spelling every day |
-| state | Yes | State of the branch (codes like KA work) |
-| lob, product | Yes | Line of business and product |
-| business_type | Yes | Fresh or Renewal |
-| premium | Yes | Premium in rupees |
-| sum_assured | Yes | Sum assured, sum insured or IDV in rupees |
-| location, branch, imd_code, sub_imd_code | Optional | Turn on those filters |
+The first load carries history from 1 Apr 2025, so that growth on last year works for the whole of this financial year. `templates/Banca-MIS-Snowflake-Queries.sql` has a query for each daily sheet and for Earned Premium.
 
-### Renewals Due – every day, one row per expiring policy
+## What the load does
 
-| Column | Required | What to put |
-|---|---|---|
-| policy_no | Yes | The expiring policy number |
-| expiry_date | Yes | The renewal due date |
-| channel … rm, lob, product | Yes | As in Business, for the RM who owns the renewal |
-| premium | Yes | Expiring premium |
-| state, sum_assured | Optional | Turn on state, zone and SA band cuts for renewals |
-| renewal_status, renewed_on, renewed_premium | Optional | Fill these if your system has them. Otherwise the dashboard works out renewals from previous_policy_no in Business |
-
-### Targets – monthly
-
-`month, channel, vertical_head, bank, nc, zh, tl, rm, lob, product, aop, adj_aop`. A month in this sheet replaces that month's targets.
-
-### Users – when people change
-
-`email, name, role`. Role is Channel Head, MIS Admin, Vertical Head, NC, ZH, TL or RM. Put **Inactive** to remove someone. Only the people listed change; everyone else stays. The name must match the Business sheet at that person's level.
-
-## What the load does, step by step
-
-1. **Reading your file**: opens the .xlsx (or .csv) in the browser.
-2. **Finding the sheets**: works out from the header row which sheet is which, and skips the Read me sheet.
-3. **Checking columns**: stops, changing nothing, if a must-have column is missing. Lists any other missing columns.
-4. **Cleaning and checking every row**:
-   - Issue date missing, not a date, or in the future: the row is not loaded.
-   - Premium missing or not a number: the row is not loaded. Negative, zero or above ₹1 crore: loaded and flagged.
-   - Names with extra spaces or different capital letters are changed to one spelling (the one already in the data, or the most common one in the file).
-   - State codes (KA, MH …) become full names. Zone is filled in from the state.
-   - Business type words like New, RN and Rollover become Fresh or Renewal.
-   - Blank names load as "Unassigned" and are counted as missing.
-5. **Checking for repeats in the file**: the same row twice keeps one. The same policy number with different details keeps the last row and flags it.
-6. **Checking issue dates**: lists the dates in the file, flags rows dated before the latest date already loaded (past numbers change), and sets the date the dashboard runs to (the latest issue date).
-7. **Checking names and hierarchy**: flags an RM under two TLs in the same file, people who moved compared with earlier data, new names (to catch spelling slips), products under a different LOB, and users whose name has no business at their level.
-8. **Comparing with the data already loaded**:
-   - A policy number seen before with nothing changed is skipped. With something changed, it is updated (moved to the right month if its issue date changed).
-   - A row with no policy number is skipped only if an identical row is already loaded.
-   - A file with no policy_no column replaces whatever was loaded for the dates in it.
-   - Renewals are matched: a Business row whose previous_policy_no is in the due list marks that policy as renewed on its issue date.
-9. **Your review**: a summary of what will change and a table of missing, invalid, inconsistent, duplicate and cleaned values by field. **Download anomaly report** gives the full list.
-10. **Rebuilding the dashboard**, **saving in this browser** and **publishing to the shared link** (GitHub).
+1. **Reads** each .xlsx or .csv and works out which sheet is which from the header row. "Read me" sheets are skipped.
+2. **Checks columns**: stops, changing nothing, if a must-have column is missing; lists optional columns that are absent or empty.
+3. **Cleans and checks every row.** Each problem is counted as Missing, Invalid, Inconsistent, Duplicate or Cleaned, with what was done. Examples:
+   - A date that is missing, not a date, or in the future: the row is not loaded (for Business, Servicing, Claims). Dates more than two years old are loaded and flagged.
+   - Premium not a number: row not loaded. Negative, zero or above ₹1 crore for one policy: loaded and flagged. Sum assured below the premium: flagged.
+   - Policy end before start, or start more than 45 days before issue: flagged.
+   - Business type: New, Renewal, Rollover or Portability (common spellings such as NB, RN, Roll over are understood). A renewal with no previous policy number is flagged, because it cannot be matched to the due list.
+   - Servicing: refunds given as positive numbers are made negative; a nil endorsement with a premium change, or a cancellation before the issue date, is flagged.
+   - Claims: a closed claim with a reserve still open, an open claim with no reserve, a rejected claim with a payment, or a loss date after the reported date is flagged.
+   - Names with extra spaces or different capitals become one spelling (the one already loaded, else the most common in the file). State codes (KA, MH …) become full names and the zone is filled in from the state.
+   - A row with no IMD code loads, but only admins see it.
+4. **Removes repeats** inside the file: the same row twice keeps one; the same policy, claim or transaction number with different details keeps the last and flags it.
+5. **Checks the Sales Hierarchy**: rows with no email at any level are skipped; a gap in the chain (an L3 with no L2) is flagged; repeated lines across loads are merged, so loading the same hierarchy twice changes nothing.
+6. **Compares with the data already loaded**:
+   - Business, Renewals Due, Servicing, Claims, People, Branch Master: matched by policy number, transaction number, claim number, email, or bank and branch code. Unchanged rows are skipped; changed rows are updated.
+   - Targets, Earned Premium, Commission & Expense: each month in the file replaces that month.
+   - Sales Hierarchy: each code in the file replaces that code's people; codes not in the file stay. Admins: listed people are added, or removed with role "Inactive" (mainak.adhikary@bajajgeneral.com can never be removed).
+   - A Business row whose previous policy number is in the due list marks that policy as renewed on its issue date.
+7. **Your review**: a summary of what will change and a table of problems by field. **Download anomaly report** gives the full list.
+8. **Saves** to the Banca MIS database (or this browser, if the database is not connected yet) and rebuilds every page.
 
 ## The anomaly report
 
-An Excel file with: Summary (counts per sheet and per issue date), the cleaned data for each sheet with a load status on every row, and **Anomalies** as the last sheet: counts by field, then one line per problem with the sheet, row number, policy number, field, problem, value found and what was done.
+An Excel file with a Summary, the cleaned data of each sheet with a load status on every row, and **Anomalies** as the last sheet: counts by field, then one line per problem with the sheet, row number, policy number as given in your file (the report never leaves your computer), field, problem, value found and what was done.
 
-## Renewal rules
+## How the numbers are worked out
 
-- Renewed on time: on or before the expiry date. Renewed in grace: within the grace period. Won back: after the grace period.
-- In grace: expired, not renewed, grace still running. Win-back pipeline: grace over, still within the win-back window. Lost: past the window (opportunity lost).
-- Default grace: Health 30 days, others none. Default win-back window: 90 days after grace. Change them under Renewal → Rules (kept per browser).
-- Premium on the renewal pages is the expiring premium.
+- **GWP** is built the way it is booked: premium at issuance (Business) plus every extra premium, refund and cancellation (Servicing) on its own date. Policy count and sum assured are counted once, from the issuance row.
+- **Achievement** = GWP ÷ AOP for the same months. Targets set on an IMD roll up through everyone who shares that IMD; targets with a Sub IMD code also give L1 people their own target.
+- **Growth** compares the same dates last year (or last month), on the financial year (Apr–Mar) or calendar year, as chosen.
+- **Renewal rate** = policies renewed ÷ policies due. Renewed on time: on or before expiry. In grace: within the grace period (Health 30 days, others none by default). Won back: after grace, within the win-back window (90 days by default). Lost: past the window. Grace and window can be changed under Renewal → Rules.
+- **Servicing rate** = policies issued this year that had at least one servicing row ÷ policies issued this year. Servicing on policies issued earlier is shown as "carry-in".
+- **Cancellation rate** (issued cohort) = policies issued this year that were later cancelled ÷ policies issued this year. Days to cancel run from the issue date to the cancellation date.
+- **Claims ratio** = incurred claims (paid + outstanding) on claims reported in the period ÷ earned premium for the same months. Only months with earned premium loaded are counted, so a missing month never makes the ratio look low. Frequency = claims ÷ earned policies; severity = incurred ÷ claims.
+- **P&L proxy** = earned premium − incurred claims, then less commission, acquisition cost and operating expense where Commission & Expense is loaded. Costs given by IMD only come off the total, not the LOB lines.
+- **Branch activation** = branches with business ÷ open branches in the Branch Master (without the Branch Master, only branches with business can be counted).
+- **Focus / Watch / On pace** use the review lens thresholds in the report card (Default, Strict or Tolerant, or your own, kept per browser).
 
-## What is published
+## What is stored
 
-Only the cleaned data, in `data/`. Policy numbers are replaced by a scrambled key, plus the last 4 characters so an RM can find the policy. The anomaly report stays on your computer.
+Only cleaned data. Policy and claim numbers are replaced by a scrambled key; the last 4 characters of a policy number are kept so an RM can find the policy. The anomaly report stays on the admin's computer.
 
 ## Band edges
 
